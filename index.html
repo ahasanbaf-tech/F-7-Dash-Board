@@ -440,21 +440,17 @@
 
 <footer>F-7 Fleet &middot; 9 Aircraft &middot; Real-time shared board &middot; Shareable static file</footer>
 
-<div class="modal-backdrop" id="landModalBackdrop">
+<div class="modal-backdrop" id="landingTimeModalBackdrop">
   <div class="modal">
-    <h2 id="landModalTitle">Aircraft Landed</h2>
-    <div class="modal-sub">Confirm landing details to begin ground preparation.</div>
+    <h2 id="landingTimeModalTitle">Aircraft Landed</h2>
+    <div class="modal-sub">Confirm the landing time.</div>
     <div class="field">
-      <label for="landingTimeInput">Landing Time</label>
-      <input type="time" id="landingTimeInput" step="1">
-    </div>
-    <div class="field">
-      <label for="prepMinutesInput">Preparation Time (minutes)</label>
-      <input type="number" id="prepMinutesInput" min="1" max="240" value="30">
+      <label for="landingTimeOnlyInput">Landing Time</label>
+      <input type="time" id="landingTimeOnlyInput" step="1">
     </div>
     <div class="modal-actions">
-      <button class="btn ghost" id="landCancelBtn" style="flex:1;">Cancel</button>
-      <button class="btn land" id="landConfirmBtn" style="flex:1; background:var(--prep); color:#2b1400;">Confirm</button>
+      <button class="btn ghost" id="landingTimeCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn land" id="landingTimeConfirmBtn" style="flex:1; background:var(--prep); color:#2b1400;">Confirm</button>
     </div>
   </div>
 </div>
@@ -462,10 +458,10 @@
 <div class="modal-backdrop" id="svcModalBackdrop">
   <div class="modal">
     <h2 id="svcModalTitle">Aircraft Landed</h2>
-    <div class="modal-sub">Is the aircraft serviceable for the next sortie?</div>
+    <div class="modal-sub">Is the aircraft serviceable?</div>
     <div class="modal-actions">
-      <button class="btn ready-btn" id="svcServiceableBtn" style="flex:1; padding:14px;">Serviceable</button>
-      <button class="btn reset" id="svcUnserviceableBtn" style="flex:1; padding:14px;">Unserviceable (U/S)</button>
+      <button class="btn ready-btn" id="svcServiceableBtn" style="flex:1; padding:14px;">&#9989; Serviceable</button>
+      <button class="btn reset" id="svcUnserviceableBtn" style="flex:1; padding:14px;">&#10060; Unserviceable</button>
     </div>
     <div class="modal-actions">
       <button class="btn ghost" id="svcCancelBtn" style="flex:1;">Cancel</button>
@@ -473,42 +469,31 @@
   </div>
 </div>
 
-<div class="modal-backdrop" id="maintModalBackdrop">
+<div class="modal-backdrop" id="postLandModalBackdrop">
   <div class="modal">
-    <h2 id="maintModalTitle">Aircraft Unserviceable</h2>
-    <div class="modal-sub">Log the fault and estimated rectification time.</div>
-    <div class="field">
-      <label for="faultTimeInput">Fault Reported Time</label>
-      <input type="time" id="faultTimeInput" step="1">
-    </div>
-    <div class="field">
-      <label for="rectifyMinutesInput">Estimated Rectification Time (minutes)</label>
-      <input type="number" id="rectifyMinutesInput" min="1" max="2880" value="120">
+    <h2 id="postLandTitle">Next Step</h2>
+    <div class="modal-sub">What should happen next?</div>
+    <div class="modal-actions">
+      <button class="btn land" id="postLandPrepBtn" style="flex:1; padding:14px;">&#128736;&#65039; Start Ground Preparation</button>
+      <button class="btn ready-btn" id="postLandReadyBtn" style="flex:1; padding:14px;">&#128994; Mark Ready for Flying</button>
     </div>
     <div class="modal-actions">
-      <button class="btn ghost" id="maintCancelBtn" style="flex:1;">Cancel</button>
-      <button class="btn reset" id="maintConfirmBtn" style="flex:1; background:var(--maint); color:#2b0410; border-color:var(--maint);">Confirm U/S</button>
+      <button class="btn ghost" id="postLandCancelBtn" style="flex:1;">Cancel</button>
     </div>
   </div>
 </div>
 
-<div class="modal-backdrop" id="releaseModalBackdrop">
+<div class="modal-backdrop" id="prepMinutesModalBackdrop">
   <div class="modal">
-    <h2 id="releaseModalTitle">Release From Maintenance</h2>
-    <div class="modal-sub">Choose how to return this aircraft to the line.</div>
-    <div class="modal-actions">
-      <button class="btn ready-btn" id="releaseReadyBtn" style="flex:1; padding:12px;">Return to Ready</button>
-      <button class="btn land" id="releasePrepBtn" style="flex:1; padding:12px;">Start Preparation</button>
-    </div>
-    <div class="field" id="releasePrepField" style="display:none; margin-top:12px;">
-      <label for="releasePrepMinutesInput">Preparation Time (minutes)</label>
-      <input type="number" id="releasePrepMinutesInput" min="1" max="240" value="30">
-      <div class="modal-actions">
-        <button class="btn land" id="releasePrepConfirmBtn" style="flex:1; background:var(--prep); color:#2b1400;">Begin Prep Countdown</button>
-      </div>
+    <h2 id="prepModalTitle">Start Ground Preparation</h2>
+    <div class="modal-sub">How long will ground preparation take?</div>
+    <div class="field">
+      <label for="prepMinutesOnlyInput">Ground Preparation Time (minutes)</label>
+      <input type="number" id="prepMinutesOnlyInput" min="1" max="240" value="30">
     </div>
     <div class="modal-actions">
-      <button class="btn ghost" id="releaseCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn ghost" id="prepMinutesCancelBtn" style="flex:1;">Cancel</button>
+      <button class="btn land" id="prepMinutesConfirmBtn" style="flex:1; background:var(--prep); color:#2b1400;">Start Countdown</button>
     </div>
   </div>
 </div>
@@ -566,7 +551,6 @@
   var TAILS = ["703","704","711","712","713","714","716","719","722"];
   var STORAGE_KEY = "f7FleetOpsDashboard_v1";
   var EXTEND_STEP_MIN = 5;
-  var OVERDUE_GRACE_MS = 60 * 1000; // grace before an unacknowledged zero countdown flips to OVERDUE
   var currentFilter = "all";
   var currentSort = "tail";
   var searchTerm = "";
@@ -575,16 +559,14 @@
   function defaultAircraft(tail){
     return {
       tail: tail,
-      status: "ready",       // idle | ready | inair | prep | overdue | maint | maint_overdue
+      status: "ready",       // idle | ready | inair | prep | maint
       takeoffTime: null,     // ms epoch
       landingTime: null,     // ms epoch
       prepMinutes: 30,
       prepStart: null,       // ms epoch
       readyTime: null,       // ms epoch (estimate)
       sorties: 0,
-      faultReportedTime: null,  // ms epoch
-      estRectifyMinutes: 120,
-      rectifyDeadline: null,      // ms epoch
+      maintEnteredTime: null,     // ms epoch — when it went into maintenance
       totalFlightTimeMs: 0,       // today's cumulative airborne time
       turnarounds: [],            // today's [{landingTime, readyTime, durationMs}]
       maintEvents: []             // today's [{faultTime, releaseTime, durationMs}]
@@ -849,22 +831,20 @@
       ac.maintEvents.forEach(function(m){ allMaint.push(m.durationMs); });
     });
     var bySorties = stats.slice().sort(function(a,b){ return b.sorties - a.sorties; });
-    var readyN=0, inairN=0, prepN=0, maintN=0, maintOverdueN=0, overdueN=0;
+    var readyN=0, inairN=0, prepN=0, maintN=0;
     fleet.forEach(function(ac){
       if(ac.status==="ready") readyN++;
       else if(ac.status==="inair") inairN++;
       else if(ac.status==="prep") prepN++;
-      else if(ac.status==="overdue") overdueN++;
       else if(ac.status==="maint") maintN++;
-      else if(ac.status==="maint_overdue") maintOverdueN++;
     });
     return {
       date: currentDayKey,
       totalAircraft: fleet.length,
       totalSorties: totalSorties,
       totalFlightCycles: totalCycles,
-      readyN: readyN, inairN: inairN, prepN: prepN, overdueN: overdueN,
-      maintN: maintN, maintOverdueN: maintOverdueN,
+      readyN: readyN, inairN: inairN, prepN: prepN,
+      maintN: maintN,
       avgTurnaroundMs: avg(allTurn),
       fastestTurnaroundMs: allTurn.length ? Math.min.apply(null, allTurn) : null,
       longestTurnaroundMs: allTurn.length ? Math.max.apply(null, allTurn) : null,
@@ -873,7 +853,7 @@
       maintEventCount: allMaint.length,
       mostUtilized: bySorties.length && bySorties[0].sorties > 0 ? bySorties[0].tail : "\u2014",
       leastUtilized: bySorties.length ? bySorties[bySorties.length-1].tail : "\u2014",
-      availabilityPct: fleet.length ? Math.round(((fleet.length - maintN - maintOverdueN) / fleet.length) * 100) : 0,
+      availabilityPct: fleet.length ? Math.round(((fleet.length - maintN) / fleet.length) * 100) : 0,
       readinessPct: fleet.length ? Math.round((readyN / fleet.length) * 100) : 0,
       avgSortiesPerAircraft: fleet.length ? (totalSorties / fleet.length) : 0,
       aircraftStats: stats
@@ -943,26 +923,14 @@
     var changedThisTick = false;
 
     fleet.forEach(function(ac){
-      if(ac.status === "prep" || ac.status === "overdue"){
+      if(ac.status === "prep"){
         var remaining = ac.readyTime - now;
         if(remaining <= 0){
-          if(ac.status === "prep" && remaining > -OVERDUE_GRACE_MS){
-            ac.status = "ready";
-            ac.takeoffTime = null;
-            ac.prepStart = null;
-            playReadyChime();
-            recordTurnaround(ac, now);
-            changedThisTick = true;
-          } else if(ac.status !== "overdue"){
-            ac.status = "overdue";
-            pushEvent(ac.tail, "Turnaround Overdue");
-            changedThisTick = true;
-          }
-        }
-      } else if(ac.status === "maint"){
-        if(ac.rectifyDeadline && now >= ac.rectifyDeadline){
-          ac.status = "maint_overdue";
-          pushEvent(ac.tail, "Maintenance Overdue");
+          ac.status = "ready";
+          ac.takeoffTime = null;
+          ac.prepStart = null;
+          playReadyChime();
+          recordTurnaround(ac, now);
           changedThisTick = true;
         }
       }
@@ -987,9 +955,18 @@
     if(ac.landingTime){
       var dur = now - ac.landingTime;
       ac.turnarounds.push({ landingTime: ac.landingTime, readyTime: now, durationMs: dur });
-      pushEvent(ac.tail, "Ready (turnaround " + fmtDuration(dur) + ")");
+      pushEvent(ac.tail, "Ready for Flying (turnaround " + fmtDuration(dur) + ")");
     } else {
-      pushEvent(ac.tail, "Ready");
+      pushEvent(ac.tail, "Ready for Flying");
+    }
+  }
+  function recordMaintRelease(ac, now){
+    if(ac.maintEnteredTime){
+      var dur = now - ac.maintEnteredTime;
+      ac.maintEvents.push({ faultTime: ac.maintEnteredTime, releaseTime: now, durationMs: dur });
+      pushEvent(ac.tail, "Released from Maintenance (duration " + fmtDuration(dur) + ")");
+    } else {
+      pushEvent(ac.tail, "Released from Maintenance");
     }
   }
 
@@ -1008,112 +985,52 @@
     tick();
   }
 
-  var pendingLandTail = null;
-
-  // Step 1: Aircraft Landed -> ask Serviceable / Unserviceable
-  function openServiceabilityModal(tail){
+  // Always-available instant action: flag an aircraft Under Maintenance from any state
+  function actionEnterMaintenance(tail){
     var ac = getAircraft(tail);
-    if(!ac || ac.status !== "inair") return;
-    pendingLandTail = tail;
-    document.getElementById("svcModalTitle").textContent = "Aircraft Landed — " + tail;
-    document.getElementById("svcModalBackdrop").classList.add("open");
-  }
-  function closeServiceabilityModal(){
-    document.getElementById("svcModalBackdrop").classList.remove("open");
-  }
-
-  // Step 2a: Serviceable -> normal preparation modal
-  function openPrepModal(){
-    document.getElementById("landModalTitle").textContent = "Aircraft Landed — " + pendingLandTail;
-    document.getElementById("landingTimeInput").value = msToTimeInput(Date.now());
-    document.getElementById("prepMinutesInput").value = 30;
-    document.getElementById("landModalBackdrop").classList.add("open");
-  }
-  function closeLandModal(){
-    pendingLandTail = null;
-    document.getElementById("landModalBackdrop").classList.remove("open");
-  }
-  function confirmLanding(){
-    if(!pendingLandTail) return;
-    var ac = getAircraft(pendingLandTail);
-    if(!ac) return;
-    var timeVal = document.getElementById("landingTimeInput").value;
-    var prepVal = parseInt(document.getElementById("prepMinutesInput").value, 10);
-    if(isNaN(prepVal) || prepVal < 1) prepVal = 30;
-    var landingMs = timeInputToTodayMs(timeVal);
-    if(ac.takeoffTime){ ac.totalFlightTimeMs += Math.max(0, landingMs - ac.takeoffTime); }
-    ac.status = "prep";
-    ac.landingTime = landingMs;
-    ac.prepMinutes = prepVal;
-    ac.prepStart = landingMs;
-    ac.readyTime = landingMs + prepVal*60000;
-    ac.faultReportedTime = null;
-    ac.rectifyDeadline = null;
-    pushEvent(ac.tail, "Landed (serviceable)");
+    if(!ac || ac.status === "maint") return;
+    var now = Date.now();
+    if(ac.status === "inair" && ac.takeoffTime){ ac.totalFlightTimeMs += Math.max(0, now - ac.takeoffTime); }
+    ac.status = "maint";
+    ac.maintEnteredTime = now;
+    ac.takeoffTime = null;
+    ac.prepStart = null;
+    ac.readyTime = null;
+    pushEvent(tail, "Under Maintenance");
     commitChange();
-    closeLandModal();
     tick();
   }
 
-  // Step 2b: Unserviceable -> maintenance modal
-  function openMaintModal(){
-    document.getElementById("maintModalTitle").textContent = "Aircraft Unserviceable — " + pendingLandTail;
-    document.getElementById("faultTimeInput").value = msToTimeInput(Date.now());
-    document.getElementById("rectifyMinutesInput").value = 120;
-    document.getElementById("maintModalBackdrop").classList.add("open");
-  }
-  function closeMaintModal(){
-    pendingLandTail = null;
-    document.getElementById("maintModalBackdrop").classList.remove("open");
-  }
-  function confirmMaintenance(){
-    if(!pendingLandTail) return;
-    var ac = getAircraft(pendingLandTail);
-    if(!ac) return;
-    var timeVal = document.getElementById("faultTimeInput").value;
-    var minsVal = parseInt(document.getElementById("rectifyMinutesInput").value, 10);
-    if(isNaN(minsVal) || minsVal < 1) minsVal = 120;
-    var faultMs = timeInputToTodayMs(timeVal);
-    if(ac.takeoffTime){ ac.totalFlightTimeMs += Math.max(0, faultMs - ac.takeoffTime); }
-    ac.status = "maint";
-    ac.landingTime = faultMs;
-    ac.faultReportedTime = faultMs;
-    ac.estRectifyMinutes = minsVal;
-    ac.rectifyDeadline = faultMs + minsVal*60000;
+  // Unified "bring into service now" action — used for prep, maintenance, and
+  // reset/no-activity aircraft alike.
+  function actionMarkReady(tail){
+    var ac = getAircraft(tail);
+    if(!ac || ac.status === "inair") return;
+    var now = Date.now();
+    if(ac.status === "maint") recordMaintRelease(ac, now);
+    ac.status = "ready";
+    ac.takeoffTime = null;
     ac.prepStart = null;
-    ac.readyTime = null;
-    pushEvent(ac.tail, "Landed \u2192 Under Maintenance (U/S)");
+    ac.maintEnteredTime = null;
+    recordTurnaround(ac, now);
     commitChange();
-    closeMaintModal();
     tick();
   }
 
   function actionExtend(tail){
     var ac = getAircraft(tail);
-    if(!ac || (ac.status !== "prep" && ac.status !== "overdue")) return;
+    if(!ac || ac.status !== "prep") return;
     ac.prepMinutes += EXTEND_STEP_MIN;
     ac.readyTime += EXTEND_STEP_MIN*60000;
-    if(ac.status === "overdue" && ac.readyTime > Date.now()) ac.status = "prep";
     commitChange();
     tick();
   }
   function actionReduce(tail){
     var ac = getAircraft(tail);
-    if(!ac || (ac.status !== "prep" && ac.status !== "overdue")) return;
+    if(!ac || ac.status !== "prep") return;
     if(ac.prepMinutes - EXTEND_STEP_MIN < 1) return;
     ac.prepMinutes -= EXTEND_STEP_MIN;
     ac.readyTime -= EXTEND_STEP_MIN*60000;
-    commitChange();
-    tick();
-  }
-  function actionMarkReady(tail){
-    var ac = getAircraft(tail);
-    if(!ac || ac.status === "maint" || ac.status === "maint_overdue") return;
-    var now = Date.now();
-    ac.status = "ready";
-    ac.takeoffTime = null;
-    ac.prepStart = null;
-    recordTurnaround(ac, now);
     commitChange();
     tick();
   }
@@ -1129,63 +1046,124 @@
     tick();
   }
 
-  // Release from maintenance
-  var pendingReleaseTail = null;
-  function openReleaseModal(tail){
+  // ---------- Landing workflow ----------
+  // Step 1: Aircraft Landed -> ask Landing Time
+  var pendingLandTail = null;
+  var pendingLandingMs = null;
+
+  function openLandingTimeModal(tail){
     var ac = getAircraft(tail);
-    if(!ac || (ac.status !== "maint" && ac.status !== "maint_overdue")) return;
-    pendingReleaseTail = tail;
-    document.getElementById("releaseModalTitle").textContent = "Release From Maintenance — " + tail;
-    document.getElementById("releasePrepField").style.display = "none";
-    document.getElementById("releasePrepMinutesInput").value = 30;
-    document.getElementById("releaseModalBackdrop").classList.add("open");
+    if(!ac || ac.status !== "inair") return;
+    pendingLandTail = tail;
+    document.getElementById("landingTimeModalTitle").textContent = "Aircraft Landed — " + tail;
+    document.getElementById("landingTimeOnlyInput").value = msToTimeInput(Date.now());
+    document.getElementById("landingTimeModalBackdrop").classList.add("open");
   }
-  function closeReleaseModal(){
-    pendingReleaseTail = null;
-    document.getElementById("releaseModalBackdrop").classList.remove("open");
+  function closeLandingTimeModal(){
+    document.getElementById("landingTimeModalBackdrop").classList.remove("open");
   }
-  function recordMaintRelease(ac, now){
-    if(ac.faultReportedTime){
-      var dur = now - ac.faultReportedTime;
-      ac.maintEvents.push({ faultTime: ac.faultReportedTime, releaseTime: now, durationMs: dur });
-      pushEvent(ac.tail, "Released from Maintenance (duration " + fmtDuration(dur) + ")");
-    } else {
-      pushEvent(ac.tail, "Released from Maintenance");
-    }
+  function confirmLandingTime(){
+    if(!pendingLandTail) return;
+    var timeVal = document.getElementById("landingTimeOnlyInput").value;
+    pendingLandingMs = timeInputToTodayMs(timeVal);
+    closeLandingTimeModal();
+    openServiceabilityModal();
   }
-  function releaseToReady(){
-    if(!pendingReleaseTail) return;
-    var ac = getAircraft(pendingReleaseTail);
-    if(!ac) return;
-    var now = Date.now();
-    recordMaintRelease(ac, now);
-    ac.status = "ready";
-    ac.faultReportedTime = null;
-    ac.rectifyDeadline = null;
+
+  // Step 2: Serviceable / Unserviceable
+  function openServiceabilityModal(){
+    document.getElementById("svcModalTitle").textContent = "Aircraft Landed — " + pendingLandTail;
+    document.getElementById("svcModalBackdrop").classList.add("open");
+  }
+  function closeServiceabilityModal(){
+    document.getElementById("svcModalBackdrop").classList.remove("open");
+  }
+  function chooseServiceable(){
+    closeServiceabilityModal();
+    document.getElementById("postLandTitle").textContent = "Next Step — " + pendingLandTail;
+    document.getElementById("postLandModalBackdrop").classList.add("open");
+  }
+  function chooseUnserviceable(){
+    closeServiceabilityModal();
+    var ac = getAircraft(pendingLandTail);
+    if(!ac){ pendingLandTail = null; return; }
+    if(ac.takeoffTime){ ac.totalFlightTimeMs += Math.max(0, pendingLandingMs - ac.takeoffTime); }
+    ac.status = "maint";
+    ac.landingTime = pendingLandingMs;
+    ac.maintEnteredTime = pendingLandingMs;
+    ac.takeoffTime = null;
     ac.prepStart = null;
     ac.readyTime = null;
-    recordTurnaround(ac, now);
+    pushEvent(ac.tail, "Landed \u2192 Under Maintenance (U/S)");
     commitChange();
-    closeReleaseModal();
+    pendingLandTail = null;
     tick();
   }
-  function releaseToPrep(){
-    if(!pendingReleaseTail) return;
-    var ac = getAircraft(pendingReleaseTail);
-    if(!ac) return;
-    var prepVal = parseInt(document.getElementById("releasePrepMinutesInput").value, 10);
-    if(isNaN(prepVal) || prepVal < 1) prepVal = 30;
-    var now = Date.now();
-    recordMaintRelease(ac, now);
-    ac.status = "prep";
-    ac.faultReportedTime = null;
-    ac.rectifyDeadline = null;
-    ac.prepMinutes = prepVal;
-    ac.prepStart = now;
-    ac.readyTime = now + prepVal*60000;
+
+  // Step 3 (serviceable only): Start Ground Preparation, or Mark Ready directly
+  function closePostLandModal(){
+    document.getElementById("postLandModalBackdrop").classList.remove("open");
+  }
+  function choosePostLandPrep(){
+    closePostLandModal();
+    openPrepMinutesModal(pendingLandTail, pendingLandingMs);
+  }
+  function choosePostLandReady(){
+    closePostLandModal();
+    var ac = getAircraft(pendingLandTail);
+    if(!ac){ pendingLandTail = null; return; }
+    if(ac.takeoffTime){ ac.totalFlightTimeMs += Math.max(0, pendingLandingMs - ac.takeoffTime); }
+    ac.status = "ready";
+    ac.landingTime = pendingLandingMs;
+    ac.takeoffTime = null;
+    ac.prepStart = null;
+    ac.readyTime = null;
+    recordTurnaround(ac, pendingLandingMs);
     commitChange();
-    closeReleaseModal();
+    pendingLandTail = null;
     tick();
+  }
+
+  // Prep-minutes-only modal — reused for post-landing prep AND post-maintenance prep
+  var pendingPrepTail = null;
+  var pendingPrepStart = null;
+  function openPrepMinutesModal(tail, prepStartMs){
+    pendingPrepTail = tail;
+    pendingPrepStart = prepStartMs;
+    document.getElementById("prepModalTitle").textContent = "Start Ground Preparation — " + tail;
+    document.getElementById("prepMinutesOnlyInput").value = 30;
+    document.getElementById("prepMinutesModalBackdrop").classList.add("open");
+  }
+  function closePrepMinutesModal(){
+    pendingPrepTail = null;
+    document.getElementById("prepMinutesModalBackdrop").classList.remove("open");
+  }
+  function confirmPrepMinutes(){
+    if(!pendingPrepTail) return;
+    var ac = getAircraft(pendingPrepTail);
+    if(!ac) return;
+    var prepVal = parseInt(document.getElementById("prepMinutesOnlyInput").value, 10);
+    if(isNaN(prepVal) || prepVal < 1) prepVal = 30;
+    var wasMaint = ac.status === "maint";
+    if(wasMaint) recordMaintRelease(ac, pendingPrepStart);
+    ac.status = "prep";
+    ac.prepMinutes = prepVal;
+    ac.prepStart = pendingPrepStart;
+    ac.readyTime = pendingPrepStart + prepVal*60000;
+    ac.landingTime = pendingPrepStart;
+    ac.maintEnteredTime = null;
+    if(!wasMaint) pushEvent(ac.tail, "Landed (serviceable) \u2192 Ground Prep Started");
+    else pushEvent(ac.tail, "Ground Prep Started (post-maintenance)");
+    commitChange();
+    closePrepMinutesModal();
+    tick();
+  }
+
+  // Card button for starting prep directly from Under Maintenance (no landing step)
+  function actionStartPrepFromMaint(tail){
+    var ac = getAircraft(tail);
+    if(!ac || ac.status !== "maint") return;
+    openPrepMinutesModal(tail, Date.now());
   }
 
   // ---------- rendering: clock ----------
@@ -1197,7 +1175,7 @@
 
   // ---------- rendering: summary ----------
   function renderSummary(now){
-    var readyN=0, inairN=0, prepN=0, overdueN=0, maintN=0, maintOverdueN=0, idleN=0;
+    var readyN=0, inairN=0, prepN=0, maintN=0, idleN=0;
     var within10=0, within20=0, within30=0;
     var readyTimes = [];
     var remainList = [];
@@ -1206,12 +1184,10 @@
       if(ac.status==="ready") readyN++;
       else if(ac.status==="inair") inairN++;
       else if(ac.status==="prep") prepN++;
-      else if(ac.status==="overdue") overdueN++;
       else if(ac.status==="maint") maintN++;
-      else if(ac.status==="maint_overdue") maintOverdueN++;
       else idleN++;
 
-      if((ac.status==="prep" || ac.status==="overdue") && ac.readyTime){
+      if(ac.status==="prep" && ac.readyTime){
         var rem = ac.readyTime - now;
         readyTimes.push(ac.readyTime);
         if(rem > 0){
@@ -1231,18 +1207,16 @@
 
     var stats = [
       {label:"Total Aircraft", value:fleet.length, cls:""},
-      {label:"\ud83d\udfe2 Ready", value:readyN, cls:"ready"},
-      {label:"\ud83d\udd35 In Air", value:inairN, cls:"inair"},
-      {label:"\ud83d\udfe0 Under Prep", value:prepN, cls:"prep"},
-      {label:"\ud83d\udd34 Turnaround Overdue", value:overdueN, cls:"overdue"},
+      {label:"\ud83d\udfe2 Ready for Flying", value:readyN, cls:"ready"},
+      {label:"\ud83d\udd35 Aircraft In Air", value:inairN, cls:"inair"},
+      {label:"\ud83d\udfe0 Under Ground Preparation", value:prepN, cls:"prep"},
       {label:"\ud83d\udd34 Under Maintenance", value:maintN, cls:"maint"},
-      {label:"\u26ab Overdue Maintenance", value:maintOverdueN, cls:"maint"},
-      {label:"Ready \u226410 min", value:within10, cls:""},
-      {label:"Ready \u226420 min", value:within20, cls:""},
-      {label:"Ready \u226430 min", value:within30, cls:""},
-      {label:"Earliest Ready", value: earliest ? fmtHM(new Date(earliest)) : "\u2014", cls:""},
-      {label:"Latest Ready", value: latest ? fmtHM(new Date(latest)) : "\u2014", cls:""},
-      {label:"Avg Prep Remaining", value: avgRemain!==null ? fmtDuration(avgRemain) : "\u2014", cls:""}
+      {label:"Ready Within 10 Min", value:within10, cls:""},
+      {label:"Ready Within 20 Min", value:within20, cls:""},
+      {label:"Ready Within 30 Min", value:within30, cls:""},
+      {label:"Earliest Aircraft Ready", value: earliest ? fmtHM(new Date(earliest)) : "\u2014", cls:""},
+      {label:"Latest Aircraft Ready", value: latest ? fmtHM(new Date(latest)) : "\u2014", cls:""},
+      {label:"Avg Remaining Ground Prep", value: avgRemain!==null ? fmtDuration(avgRemain) : "\u2014", cls:""}
     ];
 
     var html = stats.map(function(s){
@@ -1256,10 +1230,9 @@
     {key:"all", label:"All"},
     {key:"ready", label:"Ready"},
     {key:"inair", label:"In Air"},
-    {key:"prep", label:"Prep"},
-    {key:"overdue", label:"Overdue"},
+    {key:"prep", label:"Ground Prep"},
     {key:"maint", label:"Maintenance"},
-    {key:"maint_overdue", label:"Maint. Overdue"}
+    {key:"idle", label:"No Activity"}
   ];
   function renderFilterRow(){
     var html = FILTERS.map(function(f){
@@ -1278,19 +1251,18 @@
   // ---------- status label helper ----------
   function statusLabel(status){
     return {
-      ready:"Ready", inair:"In Air", prep:"Under Prep", overdue:"Overdue",
-      maint:"Under Maintenance", maint_overdue:"Overdue Maintenance", idle:"No Activity"
+      ready:"Ready for Flying", inair:"In Air", prep:"Under Ground Preparation",
+      maint:"Under Maintenance", idle:"No Activity"
     }[status] || status;
   }
 
   // ---------- sorting ----------
   function relevantDeadline(ac){
-    if(ac.status === "prep" || ac.status === "overdue") return ac.readyTime;
-    if(ac.status === "maint" || ac.status === "maint_overdue") return ac.rectifyDeadline;
+    if(ac.status === "prep") return ac.readyTime;
     return null;
   }
   function sortFleet(list, now){
-    var order = {maint_overdue:0, inair:1, overdue:2, maint:3, prep:4, ready:5, idle:6};
+    var order = {inair:0, maint:1, prep:2, ready:3, idle:4};
     var arr = list.slice();
     switch(currentSort){
       case "tail":
@@ -1355,105 +1327,90 @@
 
     var html = list.map(function(ac){
       var status = ac.status;
-      var isMaint = status === "maint" || status === "maint_overdue";
-
-      if(isMaint){
-        var mTotal = ac.rectifyDeadline - ac.faultReportedTime;
-        var mElapsed = now - ac.faultReportedTime;
-        var mProgress = mTotal > 0 ? Math.max(0, Math.min(100, (mElapsed/mTotal)*100)) : 100;
-        var faultStr = ac.faultReportedTime ? fmtHM(new Date(ac.faultReportedTime)) : "\u2014";
-        var rectifyEstStr = ac.rectifyDeadline ? fmtHM(new Date(ac.rectifyDeadline)) : "\u2014";
-        var mRemainStr, mRemainClass = "maint-v";
-        if(status === "maint_overdue"){
-          mRemainStr = "+" + fmtDuration(now - ac.rectifyDeadline);
-        } else {
-          mRemainStr = fmtDuration(ac.rectifyDeadline - now);
-        }
-
-        return (
-          '<div class="card st-'+status+'" data-tail="'+ac.tail+'">'+
-            (status==="maint" ? '<div class="hazard-bar"></div>' : '')+
-            '<div class="card-head">'+
-              '<div class="tail">'+ac.tail+'<small>SORTIES TODAY: '+ac.sorties+'</small></div>'+
-              '<div class="badge st-'+status+'">\ud83d\udd27 '+statusLabel(status)+'</div>'+
-            '</div>'+
-            '<div class="metrics">'+
-              '<div class="metric"><div class="k">Fault Reported</div><div class="v">'+faultStr+'</div></div>'+
-              '<div class="metric"><div class="k">Est. Rectification</div><div class="v">'+rectifyEstStr+'</div></div>'+
-              '<div class="metric" style="grid-column:1/-1;"><div class="k">Remaining Maintenance Time</div><div class="v big '+mRemainClass+'">'+mRemainStr+'</div></div>'+
-            '</div>'+
-            '<div class="progress-track"><div class="progress-fill st-'+status+'" style="width:'+mProgress+'%"></div></div>'+
-            '<div class="btn-row">'+
-              '<button class="btn reset" data-action="release" style="flex:1; background:var(--maint); color:#2b0410; border-color:var(--maint);">Release From Maintenance</button>'+
-              '<button class="btn reset" data-action="reset">Reset</button>'+
-            '</div>'+
-          '</div>'
-        );
-      }
 
       var progressPct = 0;
       if(status === "prep" && ac.prepStart && ac.readyTime){
         var total = ac.readyTime - ac.prepStart;
         var elapsed = now - ac.prepStart;
         progressPct = Math.max(0, Math.min(100, (elapsed/total)*100));
-      } else if(status === "overdue"){
+      } else if(status === "ready" || status === "inair"){
         progressPct = 100;
-      } else if(status === "ready"){
-        progressPct = 100;
-      } else if(status === "inair"){
+      } else if(status === "maint"){
         progressPct = 100;
       }
 
       var takeoffStr = ac.takeoffTime ? fmtHM(new Date(ac.takeoffTime)) : "\u2014";
       var landingStr = ac.landingTime ? fmtHM(new Date(ac.landingTime)) : "\u2014";
       var flightDurStr = (status === "inair" && ac.takeoffTime) ? fmtDuration(now - ac.takeoffTime, true) : "\u2014";
-      var prepStr = (ac.status==="prep" || ac.status==="overdue") ? ac.prepMinutes + " MIN" : (ac.prepMinutes ? ac.prepMinutes+" MIN" : "\u2014");
+      var prepStr = (ac.status==="prep") ? ac.prepMinutes + " MIN" : (ac.prepMinutes ? ac.prepMinutes+" MIN" : "\u2014");
       var readyEstStr = ac.readyTime ? fmtHM(new Date(ac.readyTime)) : "\u2014";
 
       var remainStr = "\u2014";
       var remainClass = "";
       if(status === "prep" && ac.readyTime){
         remainStr = fmtDuration(ac.readyTime - now);
-      } else if(status === "overdue" && ac.readyTime){
-        remainStr = "+" + fmtDuration(now - ac.readyTime);
-        remainClass = "overdue-v";
       } else if(status === "ready"){
         remainStr = "READY";
       } else if(status === "inair"){
         remainStr = "AIRBORNE";
-      } else {
-        remainStr = "\u2014";
+      } else if(status === "maint"){
+        remainStr = ac.maintEnteredTime ? fmtDuration(now - ac.maintEnteredTime, true) : "\u2014";
+        remainClass = "maint-v";
       }
+
+      var maintSinceStr = ac.maintEnteredTime ? fmtHM(new Date(ac.maintEnteredTime)) : "\u2014";
 
       var canTakeoff = status === "ready";
       var canLand = status === "inair";
-      var canAdjustPrep = status === "prep" || status === "overdue";
-      var canMarkReady = status === "prep" || status === "overdue" || status === "inair";
+      var canMaint = status !== "maint";
+      var canAdjustPrep = status === "prep";
+      var canMarkReady = status === "prep" || status === "maint" || status === "idle";
+      var canStartPrep = status === "maint";
+
+      var metricsHtml = (status === "maint")
+        ? (
+            '<div class="metrics">'+
+              '<div class="metric"><div class="k">Under Maintenance Since</div><div class="v">'+maintSinceStr+'</div></div>'+
+              '<div class="metric"><div class="k">Time in Maintenance</div><div class="v big maint-v">'+remainStr+'</div></div>'+
+            '</div>'
+          )
+        : (
+            '<div class="metrics">'+
+              '<div class="metric"><div class="k">Take-off</div><div class="v">'+takeoffStr+'</div></div>'+
+              '<div class="metric"><div class="k">Flight Duration</div><div class="v amber">'+flightDurStr+'</div></div>'+
+              '<div class="metric"><div class="k">Landing</div><div class="v">'+landingStr+'</div></div>'+
+              '<div class="metric"><div class="k">Prep Time</div><div class="v">'+prepStr+'</div></div>'+
+              '<div class="metric"><div class="k">Est. Ready</div><div class="v">'+readyEstStr+'</div></div>'+
+              '<div class="metric"><div class="k">Countdown</div><div class="v big '+remainClass+'">'+remainStr+'</div></div>'+
+            '</div>'
+          );
 
       return (
         '<div class="card st-'+status+'" data-tail="'+ac.tail+'">'+
+          (status==="maint" ? '<div class="hazard-bar"></div>' : '')+
           '<div class="card-head">'+
             '<div class="tail">'+ac.tail+'<small>SORTIES TODAY: '+ac.sorties+'</small></div>'+
-            '<div class="badge st-'+status+'">'+statusLabel(status)+'</div>'+
+            '<div class="badge st-'+status+'">'+(status==="maint"?"\ud83d\udd27 ":"")+statusLabel(status)+'</div>'+
           '</div>'+
-          '<div class="metrics">'+
-            '<div class="metric"><div class="k">Take-off</div><div class="v">'+takeoffStr+'</div></div>'+
-            '<div class="metric"><div class="k">Flight Duration</div><div class="v amber">'+flightDurStr+'</div></div>'+
-            '<div class="metric"><div class="k">Landing</div><div class="v">'+landingStr+'</div></div>'+
-            '<div class="metric"><div class="k">Prep Time</div><div class="v">'+prepStr+'</div></div>'+
-            '<div class="metric"><div class="k">Est. Ready</div><div class="v">'+readyEstStr+'</div></div>'+
-            '<div class="metric"><div class="k">Countdown</div><div class="v big '+remainClass+'">'+remainStr+'</div></div>'+
-          '</div>'+
+          metricsHtml+
           '<div class="progress-track"><div class="progress-fill st-'+status+'" style="width:'+progressPct+'%"></div></div>'+
           '<div class="btn-row">'+
-            '<button class="btn primary" data-action="takeoff" '+(canTakeoff?'':'disabled')+'>Take Off / In Air</button>'+
-            '<button class="btn land" data-action="land" '+(canLand?'':'disabled')+'>Aircraft Landed</button>'+
+            '<button class="btn primary" data-action="takeoff" '+(canTakeoff?'':'disabled')+'>\u2708\ufe0f Take Off / In Air</button>'+
+            '<button class="btn land" data-action="land" '+(canLand?'':'disabled')+'>\ud83d\udee9\ufe0f Aircraft Landed</button>'+
+          '</div>'+
+          '<div class="btn-row" style="margin-top:6px;">'+
+            '<button class="btn reset" data-action="maint" '+(canMaint?'':'disabled')+' style="flex:1;">\ud83d\udd34 Under Maintenance</button>'+
           '</div>'+
           '<div class="btn-row" style="margin-top:6px;">'+
             '<button class="btn ghost" data-action="extend" '+(canAdjustPrep?'':'disabled')+'>+5 Min</button>'+
             '<button class="btn ghost" data-action="reduce" '+(canAdjustPrep?'':'disabled')+'>-5 Min</button>'+
-            '<button class="btn ready-btn" data-action="markready" '+(canMarkReady?'':'disabled')+' style="flex:1;">Mark Ready</button>'+
-            '<button class="btn reset" data-action="reset">Reset</button>'+
+          '</div>'+
+          '<div class="btn-row" style="margin-top:6px;">'+
+            '<button class="btn ready-btn" data-action="markready" '+(canMarkReady?'':'disabled')+' style="flex:1;">\ud83d\udfe2 Mark Ready</button>'+
+            '<button class="btn land" data-action="startprep" '+(canStartPrep?'':'disabled')+' style="flex:1;">\ud83d\udee0\ufe0f Start Prep</button>'+
+          '</div>'+
+          '<div class="btn-row" style="margin-top:6px;">'+
+            '<button class="btn reset" data-action="reset" style="flex:1;">\ud83d\udd04 Reset</button>'+
           '</div>'+
         '</div>'
       );
@@ -1467,12 +1424,13 @@
         var tail = card.getAttribute("data-tail");
         var action = btn.getAttribute("data-action");
         if(action === "takeoff") actionTakeOff(tail);
-        else if(action === "land") openServiceabilityModal(tail);
+        else if(action === "land") openLandingTimeModal(tail);
         else if(action === "extend") actionExtend(tail);
         else if(action === "reduce") actionReduce(tail);
         else if(action === "markready") actionMarkReady(tail);
         else if(action === "reset") actionReset(tail);
-        else if(action === "release") openReleaseModal(tail);
+        else if(action === "maint") actionEnterMaintenance(tail);
+        else if(action === "startprep") actionStartPrepFromMaint(tail);
       });
     });
   }
@@ -1492,14 +1450,7 @@
         var elapsed = now - ac.prepStart;
         pct = Math.max(0, Math.min(100, (elapsed/total)*100));
         barColor = "var(--prep)";
-      } else if(status === "overdue"){
-        pct = 100; barColor = "var(--overdue)";
       } else if(status === "maint"){
-        var mtotal = ac.rectifyDeadline - ac.faultReportedTime;
-        var melapsed = now - ac.faultReportedTime;
-        pct = mtotal > 0 ? Math.max(0, Math.min(100, (melapsed/mtotal)*100)) : 100;
-        barColor = "var(--maint)";
-      } else if(status === "maint_overdue"){
         pct = 100; barColor = "var(--maint)";
       } else if(status === "ready"){
         pct = 100; barColor = "var(--ready)";
@@ -1508,12 +1459,10 @@
       }
 
       var eta = "\u2014";
-      if(status === "prep" || status === "overdue"){
+      if(status === "prep"){
         eta = "ETA " + (ac.readyTime ? fmtHM(new Date(ac.readyTime)) : "\u2014");
       } else if(status === "maint"){
-        eta = "RECT " + (ac.rectifyDeadline ? fmtHM(new Date(ac.rectifyDeadline)) : "\u2014");
-      } else if(status === "maint_overdue"){
-        eta = "OVERDUE +" + fmtDuration(now - ac.rectifyDeadline);
+        eta = ac.maintEnteredTime ? ("IN MAINT " + fmtDuration(now - ac.maintEnteredTime)) : "UNDER MAINTENANCE";
       } else if(status === "inair"){
         eta = "T+" + fmtDuration(now - ac.takeoffTime);
       } else if(status === "ready"){
@@ -1539,7 +1488,7 @@
       {label:"Total Sorties Today", value:s.totalSorties},
       {label:"Avg Turnaround Time", value: s.avgTurnaroundMs!==null ? fmtDuration(s.avgTurnaroundMs) : "\u2014"},
       {label:"Aircraft Availability", value: s.availabilityPct + "%"},
-      {label:"Under Maintenance", value: s.maintN + s.maintOverdueN},
+      {label:"Under Maintenance", value: s.maintN},
       {label:"Fleet Readiness", value: s.readinessPct + "%"},
       {label:"Avg Sorties / Aircraft", value: s.avgSortiesPerAircraft.toFixed(1)},
       {label:"Most Utilized", value: s.mostUtilized},
@@ -1595,8 +1544,9 @@
         var o = document.createElement("option"); o.value = t; o.textContent = t; tailSel.appendChild(o);
       });
     }
-    var knownEvents = ["Take-off","Landed (serviceable)","Landed \u2192 Under Maintenance (U/S)",
-      "Turnaround Overdue","Maintenance Overdue","Released from Maintenance","Reset \u2192 No Activity"];
+    var knownEvents = ["Take-off","Under Maintenance","Landed \u2192 Under Maintenance (U/S)",
+      "Landed (serviceable) \u2192 Ground Prep Started","Ground Prep Started (post-maintenance)",
+      "Released from Maintenance","Reset \u2192 No Activity"];
     if(evtSel.options.length <= 1){
       knownEvents.forEach(function(ev){
         var o = document.createElement("option"); o.value = ev; o.textContent = ev; evtSel.appendChild(o);
@@ -1839,20 +1789,17 @@
     currentSort = e.target.value;
     tick();
   });
-  document.getElementById("landCancelBtn").addEventListener("click", closeLandModal);
-  document.getElementById("landConfirmBtn").addEventListener("click", confirmLanding);
-  document.getElementById("landModalBackdrop").addEventListener("click", function(e){
-    if(e.target === this) closeLandModal();
+  document.getElementById("landingTimeCancelBtn").addEventListener("click", function(){
+    pendingLandTail = null;
+    closeLandingTimeModal();
+  });
+  document.getElementById("landingTimeConfirmBtn").addEventListener("click", confirmLandingTime);
+  document.getElementById("landingTimeModalBackdrop").addEventListener("click", function(e){
+    if(e.target === this){ pendingLandTail = null; closeLandingTimeModal(); }
   });
 
-  document.getElementById("svcServiceableBtn").addEventListener("click", function(){
-    closeServiceabilityModal();
-    openPrepModal();
-  });
-  document.getElementById("svcUnserviceableBtn").addEventListener("click", function(){
-    closeServiceabilityModal();
-    openMaintModal();
-  });
+  document.getElementById("svcServiceableBtn").addEventListener("click", chooseServiceable);
+  document.getElementById("svcUnserviceableBtn").addEventListener("click", chooseUnserviceable);
   document.getElementById("svcCancelBtn").addEventListener("click", function(){
     pendingLandTail = null;
     closeServiceabilityModal();
@@ -1861,20 +1808,20 @@
     if(e.target === this){ pendingLandTail = null; closeServiceabilityModal(); }
   });
 
-  document.getElementById("maintCancelBtn").addEventListener("click", closeMaintModal);
-  document.getElementById("maintConfirmBtn").addEventListener("click", confirmMaintenance);
-  document.getElementById("maintModalBackdrop").addEventListener("click", function(e){
-    if(e.target === this) closeMaintModal();
+  document.getElementById("postLandPrepBtn").addEventListener("click", choosePostLandPrep);
+  document.getElementById("postLandReadyBtn").addEventListener("click", choosePostLandReady);
+  document.getElementById("postLandCancelBtn").addEventListener("click", function(){
+    pendingLandTail = null;
+    closePostLandModal();
+  });
+  document.getElementById("postLandModalBackdrop").addEventListener("click", function(e){
+    if(e.target === this){ pendingLandTail = null; closePostLandModal(); }
   });
 
-  document.getElementById("releaseReadyBtn").addEventListener("click", releaseToReady);
-  document.getElementById("releasePrepBtn").addEventListener("click", function(){
-    document.getElementById("releasePrepField").style.display = "block";
-  });
-  document.getElementById("releasePrepConfirmBtn").addEventListener("click", releaseToPrep);
-  document.getElementById("releaseCancelBtn").addEventListener("click", closeReleaseModal);
-  document.getElementById("releaseModalBackdrop").addEventListener("click", function(e){
-    if(e.target === this) closeReleaseModal();
+  document.getElementById("prepMinutesCancelBtn").addEventListener("click", closePrepMinutesModal);
+  document.getElementById("prepMinutesConfirmBtn").addEventListener("click", confirmPrepMinutes);
+  document.getElementById("prepMinutesModalBackdrop").addEventListener("click", function(e){
+    if(e.target === this) closePrepMinutesModal();
   });
 
 
