@@ -510,19 +510,11 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
    Leave the placeholders alone and the app still runs, saving to this browser
    only (no sharing between devices). */
 var FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAh0v-HDc2yXy74u_DZbJEJmd0dBimmgkI",
-  authDomain: "insp-schedule.firebaseapp.com",
-  databaseURL: "https://insp-schedule-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "insp-schedule",
-  storageBucket: "insp-schedule.firebasestorage.app",
-  messagingSenderId: "834463244726",
-  appId: "1:834463244726:web:1c40455e5901aa96f02117",
-  measurementId: "G-Z9T7MQGBF4"
+  apiKey:       "PASTE_API_KEY",
+  authDomain:   "PASTE_PROJECT.firebaseapp.com",
+  databaseURL:  "https://PASTE_PROJECT-default-rtdb.firebaseio.com",
+  projectId:    "PASTE_PROJECT_ID"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 
 /* Everything the crew shares lives under this one key in the database. */
 var ROOT_PATH = 'fleet35';
