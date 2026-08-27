@@ -113,6 +113,10 @@ a{color:var(--info)}
 .btn.ghost-danger{border-color:var(--crit); color:var(--crit)}
 .btn.sm{padding:3px 8px; font-size:12px}
 .btn-row{display:flex; gap:7px; flex-wrap:wrap}
+/* The same look on a link, used where a real anchor is needed so that mobile
+   browsers cannot block the navigation. */
+a.btn{display:inline-block; text-decoration:none; color:var(--text)}
+a.btn.go{color:#04180C}
 
 /* ============================ FORMS ===================================== */
 .fld{display:flex; flex-direction:column; gap:4px; margin-bottom:11px}
@@ -273,6 +277,14 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
 .legend{display:flex; gap:13px; flex-wrap:wrap; padding:9px 13px; border-top:1px solid var(--line2); font-size:11px; color:var(--text3)}
 .legend span{display:flex; align-items:center; gap:5px}
 
+/* Kept visually apart from every routine control, because what sits inside it
+   is irreversible. */
+.danger-zone{
+  margin-top:26px; padding:13px; border:1px solid var(--crit); border-radius:var(--r);
+  background:var(--crit-bg);
+}
+.danger-zone p{color:#FFC9C9}
+
 /* ============================ RESPONSIVE =============================== */
 @media (max-width:900px){ .cards{grid-template-columns:1fr} .chart-grid{grid-template-columns:1fr} }
 @media (max-width:620px){
@@ -375,16 +387,19 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
   <section class="panel">
     <div class="panel-hd"><h2>Today's Flight Input</h2><span class="count" id="logStatus"></span></div>
     <div class="filters">
-      <div class="fld" style="max-width:180px;margin:0"><label for="logDate">Log date</label>
-        <input type="date" id="logDate" /></div>
+      <div class="fld" style="max-width:190px;margin:0"><label for="logDate">Log date</label>
+        <input type="date" id="logDate" />
+        <span class="hint">Any past date. Idle days fill the gap automatically.</span></div>
       <div class="fld" style="margin:0"><label>&nbsp;</label>
         <button class="btn sm" id="btnFillFromOps">Fill from Fleet Ops</button></div>
       <div class="fld" style="margin:0"><label>&nbsp;</label>
         <button class="btn sm" id="btnClearLog">Clear entries</button></div>
     </div>
     <div class="scroll-x"><table class="log-tbl"><thead><tr>
-      <th style="width:34px">Log</th><th>Aircraft</th><th class="num">FLG hours (HH:MM)</th>
-      <th class="num">Landings</th><th>Ops today</th><th>Last FLG</th>
+      <th style="width:34px">Log</th><th>Aircraft</th>
+      <th class="num">Airframe FLG hours (HH:MM)</th>
+      <th class="num">Engine FLG hours (HH:MM)</th>
+      <th class="num">Landings</th><th>Ops today</th><th>Last log / Last FLG</th>
     </tr></thead><tbody id="logRows"></tbody></table></div>
     <div class="modal-ft" style="justify-content:flex-start">
       <button class="btn go" id="btnSaveLog">Save today's log</button>
@@ -510,15 +525,12 @@ td.num,th.num{text-align:right; font-family:var(--mono); font-variant-numeric:ta
    Leave the placeholders alone and the app still runs, saving to this browser
    only (no sharing between devices). */
 var FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAh0v-HDc2yXy74u_DZbJEJmd0dBimmgkI",
-  authDomain: "insp-schedule.firebaseapp.com",
-  databaseURL: "https://insp-schedule-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "insp-schedule",
-  storageBucket: "insp-schedule.firebasestorage.app",
-  messagingSenderId: "834463244726",
-  appId: "1:834463244726:web:1c40455e5901aa96f02117",
-  measurementId: "G-Z9T7MQGBF4"
+  apiKey:       "PASTE_API_KEY",
+  authDomain:   "PASTE_PROJECT.firebaseapp.com",
+  databaseURL:  "https://PASTE_PROJECT-default-rtdb.firebaseio.com",
+  projectId:    "PASTE_PROJECT_ID"
 };
+
 /* Everything the crew shares lives under this one key in the database. */
 var ROOT_PATH = 'fleet35';
 var LS_KEY = 'fleet35_local_state';
@@ -573,18 +585,19 @@ var T = { HOURS:'hours', LANDINGS:'landings', DUEDATE:'dueDate', DATE:'date', NU
    consumes  - 'flg' subtracts flying hours, 'landings' subtracts landings
    sub       - a note that hangs underneath the item above it            */
 var BASE_FIELDS = [
-  { key:'ac100',  n:1, label:'AC 100 \u00B110 Hr Inspection',  short:'AC 100 Hr',  type:T.HOURS, interval:100*60, group:'aircraft', consumes:'flg', inspection:true },
-  { key:'ac300',  n:2, label:'AC 300 \u00B125 Hr Inspection',  short:'AC 300 Hr',  type:T.HOURS, interval:300*60, group:'aircraft', consumes:'flg', inspection:true },
-  { key:'eng25',  n:3, label:'Eng 25 \u00B15 Hr Inspection',   short:'Eng 25 Hr',  type:T.HOURS, interval:25*60,  group:'engine',   consumes:'flg', inspection:true },
-  { key:'eng50',  n:4, label:'Eng 50 \u00B110 Hr Inspection',  short:'Eng 50 Hr',  type:T.HOURS, interval:50*60,  group:'engine',   consumes:'flg', inspection:true },
-  { key:'eng100', n:5, label:'Eng 100 \u00B120 Hr Inspection', short:'Eng 100 Hr', type:T.HOURS, interval:100*60, group:'engine',   consumes:'flg', inspection:true },
-  { key:'totalEngineHours', n:6, label:'Total Engine Hours', short:'Total Eng Hrs', type:T.HOURS, group:'engine', accumulates:'flg', noWarn:true },
+  { key:'ac100',  n:1, label:'AC 100 \u00B110 Hr Inspection',  short:'AC 100 Hr',  type:T.HOURS, interval:100*60, group:'aircraft', consumes:'airframe', inspection:true },
+  { key:'ac300',  n:2, label:'AC 300 \u00B125 Hr Inspection',  short:'AC 300 Hr',  type:T.HOURS, interval:300*60, group:'aircraft', consumes:'airframe', inspection:true },
+  { key:'eng25',  n:3, label:'Eng 25 \u00B15 Hr Inspection',   short:'Eng 25 Hr',  type:T.HOURS, interval:25*60,  group:'engine',   consumes:'engine', inspection:true },
+  { key:'eng50',  n:4, label:'Eng 50 \u00B110 Hr Inspection',  short:'Eng 50 Hr',  type:T.HOURS, interval:50*60,  group:'engine',   consumes:'engine', inspection:true },
+  { key:'eng100', n:5, label:'Eng 100 \u00B120 Hr Inspection', short:'Eng 100 Hr', type:T.HOURS, interval:100*60, group:'engine',   consumes:'engine', inspection:true },
+  { key:'totalEngineHours', n:6, label:'Total Engine Hours', short:'Total Eng Hrs', type:T.HOURS, group:'engine', accumulates:'engine', noWarn:true },
   { key:'engineSerial',     n:7, label:'Engine Serial Number', short:'Eng S/N', type:T.TEXT, group:'engine', noWarn:true },
   { key:'engineSerialNote', n:7, label:'Engine S/N status note', short:'Eng S/N note', type:T.TEXT, group:'engine', noWarn:true, sub:'engineSerial', placeholder:'(1st O/H) / (2nd O/H) / (Rtd)' },
-  { key:'engineOhLeft', n:8, label:'Engine OH / Retirement Left', short:'Eng OH/Rtd', type:T.HOURS, group:'engine', consumes:'flg', redBelow:30*60, amberBelow:60*60, overdueText:'OVERDUE / LIMIT REACHED' },
+  { key:'engineOhLeft', n:8, label:'Engine OH / Retirement Left', short:'Eng OH/Rtd', type:T.HOURS, group:'engine', consumes:'engine', redBelow:30*60, amberBelow:60*60, overdueText:'OVERDUE / LIMIT REACHED' },
   { key:'engineOhNote', n:8, label:'Eng OH/Rtd status note', short:'Eng OH note', type:T.TEXT, group:'engine', noWarn:true, sub:'engineOhLeft', placeholder:'Rtd, or next O/H due', freezeParentIf:'rtd' },
-  { key:'turboCooler', n:9, label:'Turbo Cooler Oil Charge Due', short:'Turbo Oil', type:T.HOURS, group:'engine', consumes:'flg', redBelow:5*60, amberBelow:10*60, cycle:25*60, resetLabel:'Oil charged / reset' },
-  { key:'turboRefEngHours', n:9, label:'Turbo oil referenced at engine hours', short:'Turbo ref', type:T.HOURS, group:'engine', noWarn:true, sub:'turboCooler' },
+  /* Turbo cooler oil is an airframe item, so it runs on airframe hours. */
+  { key:'turboCooler', n:9, label:'Turbo Cooler Oil Charge Due', short:'Turbo Oil', type:T.HOURS, group:'aircraft', consumes:'airframe', redBelow:5*60, amberBelow:10*60, cycle:25*60, resetLabel:'Oil charged / reset' },
+  { key:'turboRefEngHours', n:9, label:'Turbo oil referenced at engine hours', short:'Turbo ref', type:T.HOURS, group:'aircraft', noWarn:true, sub:'turboCooler' },
   { key:'wheelBearing', n:10, label:'Wheel Bearing Greasing Left', short:'Wheel Brg', type:T.LANDINGS, group:'aircraft', consumes:'landings', redBelow:5, amberBelow:10 },
   { key:'brakeDisk',    n:11, label:'Brake Disk Change Due Left', short:'Brake Disk', type:T.LANDINGS, group:'aircraft', consumes:'landings', redBelow:10, amberBelow:20 },
   { key:'idleDays',     n:12, label:'AC Idle (Days)',    short:'Idle',       type:T.NUMBER, group:'aircraft' },
@@ -644,6 +657,15 @@ function fmtHM(mins){
 }
 function pad2(n){ return String(n).length < 2 ? '0'+n : String(n); }
 function hmDecimal(mins){ return mins === null ? 0 : Math.round(mins/60*100)/100; }
+
+/* Daily logs hold airframe hours and engine hours separately. Records saved
+   before that split only carry flgMinutes, so both readers fall back to it. */
+function logAirMin(r){
+  return (r && r.airframeMinutes !== undefined && r.airframeMinutes !== null) ? r.airframeMinutes : ((r && r.flgMinutes) || 0);
+}
+function logEngMin(r){
+  return (r && r.engineMinutes !== undefined && r.engineMinutes !== null) ? r.engineMinutes : ((r && r.flgMinutes) || 0);
+}
 
 /* ---- Milliseconds, used by the Ops timers ---- */
 function msToHM(ms){ if(ms === null || ms === undefined || isNaN(ms)) return '--'; return fmtHM(Math.floor(ms/60000)); }
@@ -1095,12 +1117,25 @@ function evalAircraft(state){
 }
 
 /* ----------------------------------------------------------------------------
-   The daily roll-forward. One day of flying in, a new forecast out, plus the
-   list of what changed so it can be confirmed before anything is saved.
-   Manual and baseline labels stay on the value: it keeps counting down, but the
-   card still shows where the current series started.
+   The daily roll-forward.
+
+   Two separate hour figures go in, because airframe hours and engine hours are
+   not the same number once an engine has been swapped or overhauled:
+     airMins  reduces AC 100, AC 300, the turbo cooler oil and any other
+              airframe item
+     engMins  reduces Eng 25, Eng 50, Eng 100 and Engine OH/Rtd, and is added
+              to Total Engine Hours
+
+   Idle days also account for the gap since that aircraft's last saved log. If
+   the last log was the 20th and this one is the 25th, the 21st to the 24th are
+   four idle days, and then this log's own entry is applied on top.
    ---------------------------------------------------------------------------- */
-function rollForward(prevState, flgMins, landings, dateStr){
+function gapIdleDays(prevState, dateStr){
+  var last = prevState && prevState.lastLogDate;
+  if(!isYMD(last) || !isYMD(dateStr)) return 0;
+  return Math.max(0, daysBetween(last, dateStr) - 1);
+}
+function rollForward(prevState, airMins, engMins, landings, dateStr){
   var state = JSON.parse(JSON.stringify(prevState));
   var changes = [];
   function put(key, newV){
@@ -1112,28 +1147,33 @@ function rollForward(prevState, flgMins, landings, dateStr){
       updatedAt:nowIso(), previousValue:cur.value, note:'daily log ' + dateStr };
   }
   var retired = isRetired(state);
+  var flew = (airMins > 0 || engMins > 0);
 
   allFields().forEach(function(f){
     var cur = val(state, f.key);
     if(cur === null || cur === undefined) return;                  // N/A stays N/A
     if(f.key === 'engineOhLeft' && retired) return;                // retired engine is frozen
-    if(f.consumes === 'flg' && flgMins > 0)            put(f.key, cur - flgMins);
-    else if(f.accumulates === 'flg' && flgMins > 0)    put(f.key, cur + flgMins);
+    if(f.consumes === 'airframe' && airMins > 0)       put(f.key, cur - airMins);
+    else if(f.consumes === 'engine' && engMins > 0)    put(f.key, cur - engMins);
+    else if(f.accumulates === 'engine' && engMins > 0) put(f.key, cur + engMins);
     else if(f.consumes === 'landings' && landings > 0) put(f.key, cur - landings);
   });
 
-  /* Idle days key off today's FLG entry, not the calendar. */
+  /* Idle days: the untouched days since the last log, then this log's own day. */
+  var gap = gapIdleDays(state, dateStr);
   var idle = fv(state, 'idleDays');
-  put('idleDays', flgMins > 0 ? 0 : ((idle.value === null || idle.value === undefined ? 0 : idle.value) + 1));
+  var base = (idle.value === null || idle.value === undefined ? 0 : idle.value) + gap;
+  put('idleDays', flew ? 0 : base + 1);
 
-  /* Last FLG date only moves on a flying day. G/R dates are never touched. */
-  if(flgMins > 0) put('lastFlgDate', dateStr);
+  /* Last FLG date moves only when something was actually flown. G/R dates are
+     never touched here. */
+  if(flew) put('lastFlgDate', dateStr);
 
   state.lastLogDate = dateStr;
   var ev = evalAircraft(state);
   state.warn = { worst:ev.worst, red:ev.red, over:ev.over };
   state.updatedAt = nowIso();
-  return { state:state, changes:changes };
+  return { state:state, changes:changes, gapDays:gap };
 }
 
 /* ---- Fleet Overview numbers (Page 1) ---- */
@@ -1272,24 +1312,31 @@ function renderUpcoming(){
 /* ---- Daily flight input ---- */
 function captureLogDraft(){
   TAILS().forEach(function(tail){
-    var h = $('#flg_'+tail); if(!h) return;
-    S.logDraft[tail] = { flg:h.value, lnd:$('#lnd_'+tail).value, inc:$('#inc_'+tail).checked };
+    var a = $('#air_'+tail); if(!a) return;
+    S.logDraft[tail] = { air:a.value, eng:$('#eng_'+tail).value, lnd:$('#lnd_'+tail).value, inc:$('#inc_'+tail).checked };
   });
 }
 function renderLogTable(){
+  var date = $('#logDate').value || todayStr();
   $('#logRows').innerHTML = TAILS().map(function(tail){
     var st = DB.forecast[tail] || blankForecast(tail);
     var op = DB.ops[tail] || blankOps(tail);
     var done = !!S.todayLogged[tail];
     var row = S.logDraft[tail] || {};
     var opsText = op.sorties ? op.sorties + ' sorties \u00B7 ' + msToHM(op.flightMs) : '<span class="muted">no sorties</span>';
+    /* Show how many idle days this log date will add before its own entry. */
+    var gap = gapIdleDays(st, date);
+    var lastCol = '<span class="mono tiny">' + esc(st.lastLogDate || '--') + '</span>' +
+      '<div class="tiny muted">FLG ' + esc(display(fieldByKey('lastFlgDate'), val(st,'lastFlgDate'))) + '</div>' +
+      (gap > 0 && !done ? '<div class="tiny txt-amber">+' + gap + ' idle day' + (gap === 1 ? '' : 's') + ' in the gap</div>' : '');
     return '<tr>' +
       '<td><input type="checkbox" id="inc_'+tail+'" '+(row.inc === false || done ? '' : 'checked')+' '+(done?'disabled':'')+' /></td>' +
       '<td class="tail-cell">'+esc(tail)+'</td>' +
-      '<td class="num"><input type="text" class="hm" id="flg_'+tail+'" placeholder="00:00" style="max-width:104px" value="'+esc(row.flg||'')+'" '+(done?'disabled':'')+' /></td>' +
+      '<td class="num"><input type="text" class="hm" id="air_'+tail+'" placeholder="00:00" style="max-width:104px" value="'+esc(row.air||'')+'" '+(done?'disabled':'')+' /></td>' +
+      '<td class="num"><input type="text" class="hm" id="eng_'+tail+'" placeholder="00:00" style="max-width:104px" value="'+esc(row.eng||'')+'" '+(done?'disabled':'')+' /></td>' +
       '<td class="num"><input type="number" min="0" step="1" id="lnd_'+tail+'" placeholder="0" style="max-width:88px" value="'+esc(row.lnd||'')+'" '+(done?'disabled':'')+' /></td>' +
       '<td class="tiny">'+(done ? '<span class="pill lv-info">already logged</span>' : opsText)+'</td>' +
-      '<td class="mono tiny">'+esc(display(fieldByKey('lastFlgDate'), val(st,'lastFlgDate')))+'</td></tr>';
+      '<td>'+lastCol+'</td></tr>';
   }).join('');
 }
 function refreshLoggedFlags(){
@@ -1301,19 +1348,21 @@ function refreshLoggedFlags(){
                                   : 'nothing logged for ' + date + ' yet';
   renderLogTable();
 }
-/* Copies today's Ops figures into the input boxes. It only fills the boxes:
-   nothing is saved until Save today's log is pressed. */
+/* Copies today's Ops figures into the input boxes. Ops measures time in the
+   air, which is the same figure for both columns unless the engine was
+   changed, so both are filled and can be edited. Nothing is saved here. */
 function fillFromOps(){
   TAILS().forEach(function(tail){
     var op = DB.ops[tail] || blankOps(tail);
     if(S.todayLogged[tail]) return;
-    var h = $('#flg_'+tail), l = $('#lnd_'+tail);
-    if(!h) return;
-    h.value = op.flightMs ? fmtHM(Math.round(op.flightMs/60000)) : '';
-    l.value = op.sorties ? String(op.sorties) : '';
+    var a = $('#air_'+tail); if(!a) return;
+    var hm = op.flightMs ? fmtHM(Math.round(op.flightMs/60000)) : '';
+    a.value = hm;
+    $('#eng_'+tail).value = hm;
+    $('#lnd_'+tail).value = op.sorties ? String(op.sorties) : '';
   });
   captureLogDraft();
-  toast('Filled from Fleet Ops. Check the figures, then save.');
+  toast('Filled from Fleet Ops. Check both hour columns, then save.');
 }
 
 /* ---- Aircraft cards ---- */
@@ -1553,11 +1602,13 @@ function openSendModal(tail){
 
 /* ---- Release from inspection: the new values become the baseline ---- */
 function releaseFieldsFor(group){
-  return mainFields().filter(function(f){
-    return f.group === group && f.inspection;      // hour based items for that category
-  }).concat(group === 'engine'
-    ? mainFields().filter(function(f){ return ['engineOhLeft','turboCooler','totalEngineHours','engineSerial'].indexOf(f.key) >= 0; })
-    : mainFields().filter(function(f){ return f.type === T.LANDINGS; }));
+  /* Hour based items for that category, plus the extras an engineer normally
+     re-declares on release. Turbo cooler oil sits with the airframe. */
+  var extra = (group === 'engine')
+    ? ['totalEngineHours','engineOhLeft','engineSerial']
+    : ['turboCooler','wheelBearing','brakeDisk'];
+  return mainFields().filter(function(f){ return f.group === group && f.inspection; })
+    .concat(extra.map(fieldByKey).filter(Boolean));
 }
 function openReleaseModal(tail){
   var st = DB.forecast[tail] || blankForecast(tail);
@@ -1651,10 +1702,15 @@ function openAcHistoryModal(tail){
         if(tab === 'logs'){
           rows = listOf('logs').filter(function(r){ return r.tail === tail; })
                   .sort(function(a,b){ return b.date.localeCompare(a.date); });
-          box.innerHTML = rows.length ? '<div class="scroll-x"><table><thead><tr><th>Date</th><th class="num">FLG hours</th>' +
-            '<th class="num">Landings</th><th>Saved</th></tr></thead><tbody>' + rows.map(function(r){
-              return '<tr><td class="mono">'+esc(r.date)+'</td><td class="num">'+esc(fmtHM(r.flgMinutes))+'</td>' +
-                '<td class="num">'+esc(r.landings)+'</td><td class="tiny muted">'+esc(stampShort(r.savedAt))+'</td></tr>';
+          box.innerHTML = rows.length ? '<div class="scroll-x"><table><thead><tr><th>Date</th>' +
+            '<th class="num">Airframe hours</th><th class="num">Engine hours</th>' +
+            '<th class="num">Landings</th><th class="num">Idle days added</th><th>Saved</th></tr></thead><tbody>' + rows.map(function(r){
+              return '<tr><td class="mono">'+esc(r.date)+'</td>' +
+                '<td class="num">'+esc(fmtHM(logAirMin(r)))+'</td>' +
+                '<td class="num">'+esc(fmtHM(logEngMin(r)))+'</td>' +
+                '<td class="num">'+esc(r.landings)+'</td>' +
+                '<td class="num">'+esc(r.idleDaysAdded || 0)+'</td>' +
+                '<td class="tiny muted">'+esc(stampShort(r.savedAt))+'</td></tr>';
             }).join('') + '</tbody></table></div>' : '<p class="muted">No daily log yet.</p>';
         } else if(tab === 'overrides'){
           rows = listOf('overrides').filter(function(r){ return r.tail === tail; }).sort(function(a,b){ return b.ts - a.ts; });
@@ -1728,7 +1784,7 @@ function openCustomFieldModal(after){
             return type === 'hours' ? parseHM(s) : (/^\d+$/.test(s) ? parseInt(s,10) : NaN);
           }
           if(type === 'hours' || type === 'landings'){
-            def.consumes = (type === 'hours') ? 'flg' : 'landings';
+            def.consumes = (type === 'hours') ? (def.group === 'engine' ? 'engine' : 'airframe') : 'landings';
             var iv = num(root.querySelector('#cfInterval').value), rb = num(root.querySelector('#cfRed').value);
             if(isNaN(iv) || isNaN(rb)){ toast('Interval and red limit must be HH:MM or a whole number.', 'err'); return; }
             if(iv) def.interval = iv;
@@ -1786,8 +1842,8 @@ function renderSetupForm(){
   var tail = S.setupTail, st = DB.forecast[tail] || blankForecast(tail);
   var groups = [
     { name:'Hour based inspections (items 1 to 5)', list:allFields().filter(function(f){ return f.inspection; }) },
-    { name:'Engine (items 6 to 9)', list:allFields().filter(function(f){ return f.group === 'engine' && !f.inspection && !f.custom; }) },
-    { name:'Landings, idle and dates (items 10 to 19)', list:allFields().filter(function(f){ return f.group === 'aircraft' && !f.inspection && !f.custom; }) },
+    { name:'Engine items (runs on engine hours)', list:allFields().filter(function(f){ return f.group === 'engine' && !f.inspection && !f.custom; }) },
+    { name:'Airframe items, landings, idle and dates', list:allFields().filter(function(f){ return f.group === 'aircraft' && !f.inspection && !f.custom; }) },
     { name:'Custom items', list:allFields().filter(function(f){ return f.custom; }) }
   ];
   $('#setupForm').innerHTML = groups.filter(function(g){ return g.list.length; }).map(function(g){
@@ -1849,16 +1905,24 @@ function saveDailyLog(){
   TAILS().forEach(function(tail){
     if(S.todayLogged[tail]) return;
     var inc = $('#inc_'+tail); if(!inc || !inc.checked) return;
-    var hIn = $('#flg_'+tail), lIn = $('#lnd_'+tail);
-    var raw = hIn.value.trim(), mins = raw === '' ? 0 : parseHM(raw);
-    hIn.classList.toggle('bad', isNaN(mins) || mins < 0);
-    if(isNaN(mins)){ errors.push(tail + ': FLG hours must be HH:MM, for example 02:15.'); return; }
-    if(mins < 0){ errors.push(tail + ': FLG hours cannot be negative.'); return; }
+    var aIn = $('#air_'+tail), eIn = $('#eng_'+tail), lIn = $('#lnd_'+tail);
+
+    var aRaw = aIn.value.trim(), air = aRaw === '' ? 0 : parseHM(aRaw);
+    aIn.classList.toggle('bad', isNaN(air) || air < 0);
+    if(isNaN(air)){ errors.push(tail + ': airframe hours must be HH:MM, for example 02:15.'); return; }
+    if(air < 0){ errors.push(tail + ': airframe hours cannot be negative.'); return; }
+
+    var eRaw = eIn.value.trim(), eng = eRaw === '' ? 0 : parseHM(eRaw);
+    eIn.classList.toggle('bad', isNaN(eng) || eng < 0);
+    if(isNaN(eng)){ errors.push(tail + ': engine hours must be HH:MM, for example 02:15.'); return; }
+    if(eng < 0){ errors.push(tail + ': engine hours cannot be negative.'); return; }
+
     var lRaw = lIn.value.trim(), lnd = lRaw === '' ? 0 : Number(lRaw);
     var badL = !isFinite(lnd) || Math.floor(lnd) !== lnd || lnd < 0;
     lIn.classList.toggle('bad', badL);
     if(badL){ errors.push(tail + ': landings must be a whole number, zero or more.'); return; }
-    entries.push({ tail:tail, flgMinutes:mins, landings:lnd });
+
+    entries.push({ tail:tail, airframeMinutes:air, engineMinutes:eng, landings:lnd });
   });
   if(errors.length){ toast(errors[0], 'err'); return; }
   if(!entries.length){ toast('No aircraft selected to log.', 'err'); return; }
@@ -1866,15 +1930,22 @@ function saveDailyLog(){
   /* Work out every change first so it can be shown before anything is saved. */
   var plan = entries.map(function(e){
     var prev = DB.forecast[e.tail] || blankForecast(e.tail);
-    var r = rollForward(prev, e.flgMinutes, e.landings, date);
-    return { entry:e, state:r.state, changes:r.changes };
+    var r = rollForward(prev, e.airframeMinutes, e.engineMinutes, e.landings, date);
+    return { entry:e, state:r.state, changes:r.changes, gapDays:r.gapDays };
   });
   var summary = plan.map(function(p){
     var ev = evalAircraft(p.state);
     var bad = ev.items.filter(function(i){ return i.level === 'red' || i.level === 'over'; })
       .map(function(i){ return (i.field.short || i.field.label) + ' ' + i.text; });
+    var flew = p.entry.airframeMinutes > 0 || p.entry.engineMinutes > 0;
     return '<div class="item"><span class="lbl"><b>'+esc(p.entry.tail)+'</b> ' +
-      (p.entry.flgMinutes > 0 ? esc(fmtHM(p.entry.flgMinutes)) + ' \u00B7 ' + p.entry.landings + ' ldg' : 'no flying, idle day') +
+      (flew ? 'airframe ' + esc(fmtHM(p.entry.airframeMinutes)) + ' \u00B7 engine ' + esc(fmtHM(p.entry.engineMinutes)) +
+              ' \u00B7 ' + p.entry.landings + ' ldg'
+            : 'no flying, idle day') +
+      (p.gapDays > 0 ? '<br><span class="tiny txt-amber">' + p.gapDays + ' idle day' + (p.gapDays === 1 ? '' : 's') +
+        ' added for the gap since ' + esc((DB.forecast[p.entry.tail] || {}).lastLogDate || '') + '</span>' : '') +
+      '<br><span class="tiny muted">idle now ' + esc(String(val(p.state,'idleDays'))) +
+      ' \u00B7 last FLG ' + esc(display(fieldByKey('lastFlgDate'), val(p.state,'lastFlgDate'))) + '</span>' +
       (bad.length ? '<br><span class="tiny txt-red">after save: '+esc(bad.join(' \u00B7 '))+'</span>' : '') +
       '</span><span class="val">'+p.changes.length+' values</span></div>';
   }).join('');
@@ -1888,8 +1959,10 @@ function saveDailyLog(){
         DB.forecast[p.entry.tail] = p.state;
         saveForecast(p.entry.tail);
         var id = date + '_' + p.entry.tail;
-        DB.logs[id] = { id:id, date:date, tail:p.entry.tail, flgMinutes:p.entry.flgMinutes,
-                        flgHours:hmDecimal(p.entry.flgMinutes), landings:p.entry.landings, savedAt:savedAt };
+        DB.logs[id] = { id:id, date:date, tail:p.entry.tail,
+                        airframeMinutes:p.entry.airframeMinutes, engineMinutes:p.entry.engineMinutes,
+                        airframeHours:hmDecimal(p.entry.airframeMinutes), engineHours:hmDecimal(p.entry.engineMinutes),
+                        landings:p.entry.landings, idleDaysAdded:p.gapDays, savedAt:savedAt };
         saveNode('logs/'+id, DB.logs[id]);
       });
       addEvent('', 'log', 'Daily log saved for ' + date + ' (' + plan.length + ' aircraft)');
@@ -1936,9 +2009,11 @@ function exportHistoryCSV(){
       (r.releaseNote || r.note || '') + (r.newBaselineDisplay ? ' | baseline: ' +
         Object.keys(r.newBaselineDisplay).map(function(k){ return k + '=' + r.newBaselineDisplay[k]; }).join(' ') : '')]);
   });
-  out.push([]); out.push(['Daily logs']); out.push(['Date','Aircraft','FLG (HH:MM)','FLG decimal','Landings']);
+  out.push([]); out.push(['Daily logs']);
+  out.push(['Date','Aircraft','Airframe (HH:MM)','Airframe decimal','Engine (HH:MM)','Engine decimal','Landings','Idle days added']);
   listOf('logs').sort(function(a,b){ return a.date.localeCompare(b.date); }).forEach(function(r){
-    out.push([r.date, r.tail, fmtHM(r.flgMinutes), hmDecimal(r.flgMinutes), r.landings]);
+    out.push([r.date, r.tail, fmtHM(logAirMin(r)), hmDecimal(logAirMin(r)),
+              fmtHM(logEngMin(r)), hmDecimal(logEngMin(r)), r.landings, r.idleDaysAdded || 0]);
   });
   downloadCSV('fleet-history-' + todayStr() + '.csv', out);
 }
@@ -2523,11 +2598,18 @@ var WA_TEXT = {
 function whatsappMessage(tail, kind){
   return WA_TEXT[kind].replace('{PREFIX}', acType(tail)).replace('{TAIL}', tail);
 }
+function whatsappUrl(text){ return 'https://wa.me/?text=' + encodeURIComponent(text); }
+
+/* The preview dialog. There is one send path, used by all three trigger points
+   (take off, landed and serviceable, landed with entry), because they all end
+   up here. Message text, the editable box, Cancel and the tail number prefix
+   are untouched. */
 function whatsappPreview(tail, kind){
   var msg = whatsappMessage(tail, kind);
   modal({ title:'WhatsApp message \u00B7 ' + tail, body:
     '<div class="note info">Edit if needed, then send. This opens the WhatsApp compose screen in a new tab, where you pick the group or contact yourself.</div>' +
-    '<textarea id="waText" rows="8">'+esc(msg)+'</textarea>',
+    '<textarea id="waText" rows="8">'+esc(msg)+'</textarea>' +
+    '<div id="waFallback" style="margin-top:10px"></div>',
     buttons:[
       { label:'Escape', onClick:function(c){ c(); } },
       { label:'Copy', onClick:function(c, root){
@@ -2535,11 +2617,48 @@ function whatsappPreview(tail, kind){
           t.select(); try { document.execCommand('copy'); toast('Message copied.', 'ok'); } catch(e){ toast('Copy not allowed by the browser.', 'err'); }
         } },
       { label:'Send to WhatsApp', kind:'go', onClick:function(c, root){
-          var text = root.querySelector('#waText').value;
-          window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+          /* Mobile browsers only allow a new tab when it is opened during the
+             tap itself. So the blank tab is claimed first, on the very first
+             line of the handler, and only then is the message read and the tab
+             pointed at WhatsApp. Nothing async happens in between. */
+          var win = null;
+          try { win = window.open('', '_blank'); } catch(e){ win = null; }
+
+          var url = whatsappUrl(root.querySelector('#waText').value);
+
+          if(win && !win.closed){
+            try { win.location.href = url; }
+            catch(e){ try { win.close(); } catch(e2){} win = null; }
+          }
+          if(!win || win.closed){
+            /* The tab was blocked. Never fail silently: put a real link in the
+               dialog that the user can tap, which browsers always allow, and
+               leave the dialog open so it can be tapped. */
+            showWhatsappFallback(root, url, true);
+            return;
+          }
           c();
         } }
-    ]});
+    ],
+    onMount:function(root){
+      /* A plain link is always present as well. A tap on a real anchor is
+         never blocked, so there is a working route even on the strictest
+         mobile browser. It updates as the message is edited. */
+      var ta = root.querySelector('#waText');
+      var draw = function(){ showWhatsappFallback(root, whatsappUrl(ta.value), false); };
+      ta.addEventListener('input', draw);
+      draw();
+    }});
+}
+/* Draws the manual link. Called quietly when the dialog opens, and again with
+   a warning if the new tab was blocked. */
+function showWhatsappFallback(root, url, blocked){
+  var box = root.querySelector('#waFallback');
+  if(!box) return;
+  box.innerHTML =
+    (blocked ? '<div class="note warn">The browser blocked the new tab. Tap the button below to open WhatsApp.</div>' : '') +
+    '<a class="btn ' + (blocked ? 'go' : '') + '" href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' +
+      (blocked ? 'Open WhatsApp now' : 'Or open WhatsApp directly') + '</a>';
 }
 
 /* ---- End of day report ---- */
@@ -2824,18 +2943,23 @@ function buildAnalysis(from, to){
   var byDate = {}, byTail = {}, series = {};
   dates.forEach(function(x){ byDate[x] = { hours:0, landings:0 }; });
   TAILS().forEach(function(t){
-    byTail[t] = { hours:0, landings:0, flownDays:0, loggedDays:0, idleRuns:[] };
+    byTail[t] = { hours:0, engHours:0, landings:0, flownDays:0, loggedDays:0, idleRuns:[] };
     series[t] = dates.map(function(){ return 0; });
   });
   var perTail = {};
   logs.forEach(function(r){
-    if(!byDate[r.date]) byDate[r.date] = { hours:0, landings:0 };
-    var h = (r.flgMinutes || 0) / 60;
-    byDate[r.date].hours += h; byDate[r.date].landings += (r.landings || 0);
+    if(!byDate[r.date]) byDate[r.date] = { hours:0, engHours:0, landings:0 };
+    /* "Hours" on this page means airframe FLG hours. Engine hours are tracked
+       alongside, because the two figures differ after an engine change. */
+    var h = logAirMin(r) / 60, eh = logEngMin(r) / 60;
+    byDate[r.date].hours += h;
+    byDate[r.date].engHours = (byDate[r.date].engHours || 0) + eh;
+    byDate[r.date].landings += (r.landings || 0);
     if(byTail[r.tail]){
-      byTail[r.tail].hours += h; byTail[r.tail].landings += (r.landings || 0);
+      byTail[r.tail].hours += h; byTail[r.tail].engHours += eh;
+      byTail[r.tail].landings += (r.landings || 0);
       byTail[r.tail].loggedDays++;
-      if((r.flgMinutes || 0) > 0) byTail[r.tail].flownDays++;
+      if(logAirMin(r) > 0 || logEngMin(r) > 0) byTail[r.tail].flownDays++;
       (perTail[r.tail] = perTail[r.tail] || []).push(r);
       var i = dates.indexOf(r.date);
       if(i >= 0) series[r.tail][i] = h;
@@ -2845,7 +2969,7 @@ function buildAnalysis(from, to){
   Object.keys(perTail).forEach(function(t){
     var rows = perTail[t].slice().sort(function(a,b){ return a.date.localeCompare(b.date); }), run = null;
     rows.forEach(function(r){
-      if((r.flgMinutes || 0) === 0){
+      if(logAirMin(r) === 0 && logEngMin(r) === 0){
         if(!run) run = { from:r.date, to:r.date, days:1 }; else { run.to = r.date; run.days++; }
       } else if(run){ byTail[t].idleRuns.push(run); run = null; }
     });
@@ -2857,7 +2981,7 @@ function buildAnalysis(from, to){
 
 var AN_MODULES = [
   { id:'fleetHours', render:function(d){
-      return panel('Daily fleet flying hours', 'all aircraft combined',
+      return panel('Daily fleet airframe hours', 'FLG hours, all aircraft combined',
         svgBars(d.dates, d.dates.map(function(x){ return +d.byDate[x].hours.toFixed(2); }), '#4C9AFF',
           function(v){ return v.toFixed(1) + 'h'; })); } },
 
@@ -2867,7 +2991,7 @@ var AN_MODULES = [
 
   { id:'hoursByAc', render:function(d){
       var t = TAILS();
-      return panel('Flying hours by aircraft', 'total over the range',
+      return panel('Airframe hours by aircraft', 'total over the range',
         svgHBars(t, t.map(function(x){ return +d.byTail[x].hours.toFixed(2); }), t.map(tailColor),
           function(v){ return v.toFixed(2) + ' h'; })); } },
 
@@ -2877,7 +3001,7 @@ var AN_MODULES = [
         svgHBars(t, t.map(function(x){ return d.byTail[x].landings; }), t.map(tailColor))); } },
 
   { id:'dailyLines', render:function(d){
-      return panel('Daily hours per aircraft', 'one line per tail number',
+      return panel('Daily airframe hours per aircraft', 'one line per tail number',
         svgLines(d.dates, TAILS().map(function(t){ return { name:t, color:tailColor(t), data:d.series[t] }; }),
           function(v){ return v.toFixed(1) + 'h'; })); } },
 
@@ -2885,11 +3009,13 @@ var AN_MODULES = [
       var t = TAILS(), total = t.reduce(function(s,x){ return s + d.byTail[x].hours; }, 0) || 1;
       return panel('Utilisation', 'flying days, hours and share of fleet effort',
         '<table><thead><tr><th>Aircraft</th><th class="num">Days logged</th><th class="num">Days flown</th>' +
-        '<th class="num">Total hours</th><th class="num">Avg per flying day</th><th class="num">Landings</th>' +
+        '<th class="num">Airframe hours</th><th class="num">Engine hours</th>' +
+        '<th class="num">Avg per flying day</th><th class="num">Landings</th>' +
         '<th class="num">Share of fleet hours</th></tr></thead><tbody>' +
         t.map(function(x){ var b = d.byTail[x];
           return '<tr><td class="tail-cell">'+esc(x)+'</td><td class="num">'+b.loggedDays+'</td>' +
             '<td class="num">'+b.flownDays+'</td><td class="num">'+b.hours.toFixed(2)+'</td>' +
+            '<td class="num">'+b.engHours.toFixed(2)+'</td>' +
             '<td class="num">'+(b.flownDays ? (b.hours/b.flownDays).toFixed(2) : '0.00')+'</td>' +
             '<td class="num">'+b.landings+'</td><td class="num">'+((b.hours/total)*100).toFixed(1)+'%</td></tr>'; }).join('') +
         '</tbody></table>'); } },
@@ -2913,17 +3039,21 @@ var AN_MODULES = [
 
   { id:'consumption', render:function(d){
       var span = Math.max(1, daysBetween(d.from, d.to) + 1);
-      var keys = ['ac100','ac300','eng25','eng50','eng100','engineOhLeft'];
+      var keys = ['ac100','ac300','turboCooler','eng25','eng50','eng100','engineOhLeft'];
       return panel('Inspection consumption rate', 'on screen estimate only, nothing is written to the database',
-        '<table><thead><tr><th>Aircraft</th><th class="num">Hours per calendar day</th>' +
+        '<table><thead><tr><th>Aircraft</th><th class="num">Airframe hrs/day</th><th class="num">Engine hrs/day</th>' +
         keys.map(function(k){ return '<th class="num">'+esc(fieldByKey(k).short)+'</th>'; }).join('') +
         '</tr></thead><tbody>' + TAILS().map(function(t){
-          var rate = d.byTail[t].hours / span, st = DB.forecast[t] || {};
-          return '<tr><td class="tail-cell">'+esc(t)+'</td><td class="num">'+rate.toFixed(2)+'</td>' +
+          var airRate = d.byTail[t].hours / span, engRate = d.byTail[t].engHours / span, st = DB.forecast[t] || {};
+          return '<tr><td class="tail-cell">'+esc(t)+'</td><td class="num">'+airRate.toFixed(2)+'</td>' +
+            '<td class="num">'+engRate.toFixed(2)+'</td>' +
             keys.map(function(k){
               var f = fieldByKey(k), v = val(st, k);
               if(v === null || v === undefined) return '<td class="num muted">--</td>';
               var lvl = evalField(f, v, st).level;
+              /* Each item is measured against the hour stream that actually
+                 drives it, so an engine change does not distort the estimate. */
+              var rate = (f.consumes === 'engine') ? engRate : airRate;
               var days = rate > 0.001 ? Math.floor((v/60) / rate) : null;
               return '<td class="num"><span class="pill lv-'+lvl+'">'+esc(fmtHM(v))+'</span>' +
                 '<div class="tiny muted">'+(days === null ? 'no recent flying' : (days < 0 ? 'overdue' : '~'+days+' d at this rate'))+'</div></td>';
@@ -3008,7 +3138,13 @@ function openSettingsModal(){
     '<div class="fld"><label for="cfgText">Firebase config (apiKey, authDomain, databaseURL, projectId)</label>' +
       '<textarea id="cfgText" rows="7" placeholder=\'{ "apiKey": "...", "authDomain": "...", "databaseURL": "https://...firebaseio.com", "projectId": "..." }\'></textarea></div>' +
     '<div class="btn-row"><button class="btn primary" id="stCfgSave">Save config and reload</button>' +
-      '<button class="btn ghost-danger" id="stForget">Forget config on this device</button></div>',
+      '<button class="btn ghost-danger" id="stForget">Forget config on this device</button></div>' +
+    '<div class="danger-zone">' +
+      '<span class="eyebrow" style="color:var(--crit)">Danger zone</span>' +
+      '<p class="tiny" style="margin:6px 0 10px">Reset All Data erases the aircraft registry, every forecast value, the Ops board, all daily logs, inspection records, overrides, the event log and every archived day, from Firebase and from this browser. The app returns to a first run state. There is no undo and no backup is taken for you.</p>' +
+      '<div class="btn-row"><button class="btn" id="stBackup">Back up everything to CSV first</button>' +
+      '<button class="btn stop" id="stResetAll">Reset all data</button></div>' +
+    '</div>',
     buttons:[{ label:'Close', onClick:function(c){ c(); } }],
     onMount:function(root, close){
       root.querySelector('#stAdd').addEventListener('click', function(){ close(); openAddAircraftModal(); });
@@ -3041,7 +3177,72 @@ function openSettingsModal(){
         confirmModal('Forget config', 'Clear the Firebase config saved in this browser and reload? Data already in Firebase is untouched.', 'Clear and reload', 'crit')
           .then(function(ok){ if(ok){ localStorage.removeItem(LS_CFG); location.reload(); } });
       });
+      root.querySelector('#stBackup').addEventListener('click', function(){
+        exportForecastCSV(); exportHistoryCSV();
+        toast('Two CSV files downloaded. Keep them somewhere safe before resetting.', 'ok');
+      });
+      root.querySelector('#stResetAll').addEventListener('click', function(){ close(); openResetAllModal(); });
     }});
+}
+
+/* ----------------------------------------------------------------------------
+   Reset All Data. Deliberately awkward: the exact phrase has to be typed, the
+   button stays disabled until it matches, and it is kept away from every
+   routine control so it cannot be hit by accident.
+   ---------------------------------------------------------------------------- */
+var RESET_PHRASE = 'ERASE ALL FLEET DATA';
+function openResetAllModal(){
+  var counts = {
+    aircraft:TAILS().length, logs:listOf('logs').length, events:listOf('events').length,
+    inspections:listOf('inspections').length, overrides:listOf('overrides').length,
+    archives:Object.keys(DB.archives).length
+  };
+  modal({ title:'Reset all data', sticky:true, body:
+    '<div class="note crit"><b>This cannot be undone.</b> Everything below is deleted from ' +
+      (S.mode === 'firebase' ? 'Firebase and from this browser' : 'this browser') +
+      ', on every device that shares this board. The app restarts as if it had never been used.</div>' +
+    '<table><tbody>' +
+      '<tr><td>Aircraft in the registry</td><td class="num">'+counts.aircraft+'</td></tr>' +
+      '<tr><td>Forecast values and setup</td><td class="num">all</td></tr>' +
+      '<tr><td>Daily flight logs</td><td class="num">'+counts.logs+'</td></tr>' +
+      '<tr><td>Inspection records</td><td class="num">'+counts.inspections+'</td></tr>' +
+      '<tr><td>Manual overrides and baselines</td><td class="num">'+counts.overrides+'</td></tr>' +
+      '<tr><td>Operations events</td><td class="num">'+counts.events+'</td></tr>' +
+      '<tr><td>Archived days</td><td class="num">'+counts.archives+'</td></tr>' +
+      '<tr><td>Ops board and live statuses</td><td class="num">all</td></tr>' +
+    '</tbody></table>' +
+    '<div class="note warn" style="margin-top:12px">Your Firebase settings are kept, so the board reconnects after the reset. Only the fleet data goes.</div>' +
+    '<div class="fld"><label for="resetPhrase">Type <b>'+RESET_PHRASE+'</b> to confirm</label>' +
+      '<input type="text" id="resetPhrase" placeholder="'+RESET_PHRASE+'" autocomplete="off" spellcheck="false" /></div>',
+    onMount:function(root, close){
+      var ft = root.querySelector('.modal-ft');
+      var cancel = el('<button class="btn primary">Cancel, keep my data</button>');
+      cancel.addEventListener('click', close);
+      var go = el('<button class="btn stop" disabled>Erase everything</button>');
+      var input = root.querySelector('#resetPhrase');
+      input.addEventListener('input', function(){
+        go.disabled = (input.value.trim() !== RESET_PHRASE);
+      });
+      go.addEventListener('click', function(){
+        if(input.value.trim() !== RESET_PHRASE) return;
+        go.disabled = true; go.textContent = 'Erasing';
+        resetAllData();
+      });
+      ft.appendChild(cancel); ft.appendChild(go);
+    }});
+}
+function resetAllData(){
+  try { localStorage.removeItem(LS_KEY); } catch(e){}
+  if(S.mode === 'firebase' && fbDb){
+    fbDb.ref(ROOT_PATH).remove()
+      .then(function(){ location.reload(); })
+      .catch(function(err){
+        toast('Could not clear the database: ' + err.message, 'err');
+        setTimeout(function(){ location.reload(); }, 2500);
+      });
+  } else {
+    location.reload();
+  }
 }
 /* Accepts the config as JSON or as the object literal Firebase shows. */
 function looseParseConfig(txt){
